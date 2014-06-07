@@ -242,7 +242,6 @@ public class Peer {
         }
     }
 
-
     private void processMessage(MessageEvent e, Message m) throws IOException, VerificationException, ProtocolException {
         try {
             // Allow event listeners to filter the message stream. Listeners are allowed to drop messages by
@@ -259,7 +258,6 @@ public class Peer {
                 endFilteredBlock(currentFilteredBlock);
                 currentFilteredBlock = null;
               }
-            }
 
             if (m instanceof NotFoundMessage) {
                 // This is sent to us when we did a getdata on some transactions that aren't in the peers memory pool.
@@ -308,9 +306,7 @@ public class Peer {
                 processPong((Pong)m);
             } else {
                 log.warn("Received unhandled message: {}", m);
-              }
             }
-
         } catch (Throwable throwable) {
             log.warn("Caught exception in peer thread: {}", throwable.getMessage());
             throwable.printStackTrace();
