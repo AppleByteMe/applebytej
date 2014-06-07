@@ -13,7 +13,7 @@
   </modules>
 
   <name>applebytej Parent</name>
-  <description>Provides the common configuration for the ApplebyteJ modules</description>
+  <description>Provides the common configuration for the LitecoinJ modules</description>
   <url>http://code.google.com/p/applebytej</url>
 
   <licenses>

@@ -21,15 +21,15 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.google</groupId>
-        <artifactId>litecoinj-parent</artifactId>
+        <artifactId>applebytej-parent</artifactId>
         <version>0.81-SNAPSHOT</version>
     </parent>
 
     <groupId>com.google</groupId>
-    <artifactId>litecoinj</artifactId>
+    <artifactId>applebytej</artifactId>
 
-    <name>litecoinj</name>
-    <description>A Java Litecoin library</description>
+    <name>applebytej</name>
+    <description>A Java Applebyte library</description>
 
     <profiles>
         <profile>
@@ -121,7 +121,7 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
-        <!-- litecoinj consumers are expected to provide their own SLF4J adapters
+        <!-- applebytej consumers are expected to provide their own SLF4J adapters
              such as logback, slf4j-log4j12, slf4j-jcl and so on
              see http://www.slf4j.org/faq.html -->
         <dependency>
