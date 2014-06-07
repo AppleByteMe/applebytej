@@ -824,7 +824,7 @@ public abstract class AbstractBlockChain {
         return dDiff;
     }
     
-    private void verifyDifficulty(BigInteger calcDiff, StoredBlock storedPrev, Block nextBlock)
+    private void verifyDifficulty(BigInteger calcDiff, StoredBlock storedPrev, Block nextBlock) throws BlockStoreException, VerificationException 
     {
         if (calcDiff.compareTo(params.getProofOfWorkLimit()) > 0) {
             log.info("Difficulty hit proof of work limit: {}", calcDiff.toString(16));
