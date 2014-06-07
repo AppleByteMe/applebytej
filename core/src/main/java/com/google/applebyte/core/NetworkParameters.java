@@ -393,4 +393,9 @@ public class NetworkParameters implements Serializable {
     public int getDumpedPrivateKeyHeader() {
         return dumpedPrivateKeyHeader;
     }
+    
+    /** What the easiest allowable proof of work should be. */
+    public BigInteger getProofOfWorkLimit() {
+        return proofOfWorkLimit;
+    }
 }
