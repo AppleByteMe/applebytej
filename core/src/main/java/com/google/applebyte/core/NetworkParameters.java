@@ -143,7 +143,7 @@ public class NetworkParameters implements Serializable {
             targetTimespan = TARGET_TIMESPAN;
             proofOfWorkLimit = Utils.decodeCompactBits(0x1e0fffffL);
             acceptableAddressCodes = new int[] { 23 };
-            dumpedPrivateKeyHeader = 55;
+            dumpedPrivateKeyHeader = 128;
             addressHeader = 23;
             port = 8608;
             packetMagic = 0xeaafa5ca;
