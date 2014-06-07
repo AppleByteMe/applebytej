@@ -3172,8 +3172,7 @@ public class Wallet implements Serializable, BlockChainListener {
             queueAutoSave();
     
             log.info("evicted {} spent transactions, wallet has {} transactions after trim",
-                    candidates.size(), constNumTransactions + spent.size());
- +    
+                    candidates.size(), constNumTransactions + spent.size());    
         } finally {
             lock.unlock();
         }
