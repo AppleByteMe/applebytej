@@ -136,7 +136,7 @@ public class NetworkParameters implements Serializable {
 
     private NetworkParameters(int type) {
         alertSigningKey = SATOSHI_KEY;
-        if (type == 0) {
+        if (type == 0 || type == 100) {
             // Production.
             genesisBlock = createGenesis(this);
             interval = INTERVAL;
@@ -145,7 +145,8 @@ public class NetworkParameters implements Serializable {
             acceptableAddressCodes = new int[] { 23 };
             dumpedPrivateKeyHeader = 128;
             addressHeader = 23;
-            port = 8608;
+            if(type == 100) port = 18608;
+            else port = 8608;
             packetMagic = 0xeaafa5ca;
             genesisBlock.setDifficultyTarget(0x1e0ffff0L);
             genesisBlock.setTime(1398689365L);
