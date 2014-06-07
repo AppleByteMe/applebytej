@@ -388,4 +388,9 @@ public class NetworkParameters implements Serializable {
     public int getSubsidyDecreaseBlockCount() {
         return subsidyDecreaseBlockCount;
     }
+    
+    /** First byte of a base58 encoded dumped private key. See {@link com.google.bitcoin.core.DumpedPrivateKey}. */
+    public int getDumpedPrivateKeyHeader() {
+        return dumpedPrivateKeyHeader;
+    }
 }

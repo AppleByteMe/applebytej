@@ -1139,7 +1139,6 @@ public class Wallet implements Serializable, BlockChainListener {
         // TODO: Decide whether to run the event listeners, if a tx confidence listener already modified the wallet.
         boolean wasPending = wtx != null;
         if (!reorg && bestChain && !wasPending) {
-            BigInteger newBalance = getBalance();
             int diff = valueDifference.compareTo(BigInteger.ZERO);
             // We pick one callback based on the value difference, though a tx can of course both send and receive
             // coins from the wallet.
