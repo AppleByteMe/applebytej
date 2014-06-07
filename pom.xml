@@ -9,7 +9,6 @@
 
   <modules>
     <module>core</module>
-    <module>examples</module>
     <module>tools</module>
   </modules>
 
@@ -29,6 +28,10 @@
   <!-- Committers -->
   <developers>
     <!-- Information already public -->
+    <developer>
+      <name>Peter Bushnell</name>
+      <email>bushsolo@gmail.com</email>
+    </developer>
     <developer>
       <name>Mike Hearn</name>
       <email>hearn@google.com</email>
