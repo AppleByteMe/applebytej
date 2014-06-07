@@ -703,81 +703,153 @@ public abstract class AbstractBlockChain {
      * Throws an exception if the blocks difficulty is not correct.
      */
     private void checkDifficultyTransitions(StoredBlock storedPrev, Block nextBlock) throws BlockStoreException, VerificationException {
-        checkState(lock.isLocked());
-        Block prev = storedPrev.getHeader();
-        
-        // Is this supposed to be a difficulty transition point?
-        if ((storedPrev.getHeight() + 1) % params.interval != 0) {
 
-            // TODO: Refactor this hack after 0.5 is released and we stop supporting deserialization compatibility.
-            // This should be a method of the NetworkParameters, which should in turn be using singletons and a subclass
-            // for each network type. Then each network can define its own difficulty transition rules.
-            if (params.getId().equals(NetworkParameters.ID_TESTNET) && nextBlock.getTime().after(testnetDiffDate)) {
-                checkTestnetDifficulty(storedPrev, prev, nextBlock);
+    /* current difficulty formula, limecoin - DarkGravity, written by Evan Duffield - evan@limecoin.io */
+        StoredBlock BlockLastSolved = storedPrev;
+        StoredBlock BlockReading = storedPrev;
+        Block BlockCreating = nextBlock;
+        //BlockCreating = BlockCreating;
+        long nBlockTimeAverage = 0;
+        long nBlockTimeAveragePrev = 0;
+        long nBlockTimeCount = 0;
+        long nBlockTimeSum2 = 0;
+        long nBlockTimeCount2 = 0;
+        long LastBlockTime = 0;
+        long PastBlocksMin = 14;
+        long PastBlocksMax = 140;
+        long CountBlocks = 0;
+        BigInteger PastDifficultyAverage = BigInteger.valueOf(0);
+        BigInteger PastDifficultyAveragePrev = BigInteger.valueOf(0);
+
+        //if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || BlockLastSolved->nHeight < PastBlocksMin) { return bnProofOfWorkLimit.GetCompact(); }
+        if (BlockLastSolved == null || BlockLastSolved.getHeight() == 0 || (long)BlockLastSolved.getHeight() < PastBlocksMin)
+        { verifyDifficulty(params.getProofOfWorkLimit(), storedPrev, nextBlock); }
+
+        for (int i = 1; BlockReading != null && BlockReading.getHeight() > 0; i++) {
+            if (PastBlocksMax > 0 && i > PastBlocksMax)
+            {
+                break;
+            }
+            CountBlocks++;
+
+            if(CountBlocks <= PastBlocksMin) {
+                if (CountBlocks == 1) { PastDifficultyAverage = BlockReading.getHeader().getDifficultyTargetAsInteger(); }
+                else
+                {
+                    //PastDifficultyAverage = ((CBigNum().SetCompact(BlockReading->nBits) - PastDifficultyAveragePrev) / CountBlocks) + PastDifficultyAveragePrev;
+                    PastDifficultyAverage = BlockReading.getHeader().getDifficultyTargetAsInteger().subtract(PastDifficultyAveragePrev).divide(BigInteger.valueOf(CountBlocks)).add(PastDifficultyAveragePrev);
+
+                }
+                PastDifficultyAveragePrev = PastDifficultyAverage;
+            }
+
+            if(LastBlockTime > 0){
+                long Diff = (LastBlockTime - BlockReading.getHeader().getTimeSeconds());
+                //if(Diff < 0)
+                //   Diff = 0;
+                if(nBlockTimeCount <= PastBlocksMin) {
+                    nBlockTimeCount++;
+
+                    if (nBlockTimeCount == 1) { nBlockTimeAverage = Diff; }
+                    else { nBlockTimeAverage = ((Diff - nBlockTimeAveragePrev) / nBlockTimeCount) + nBlockTimeAveragePrev; }
+                    nBlockTimeAveragePrev = nBlockTimeAverage;
+                }
+                nBlockTimeCount2++;
+                nBlockTimeSum2 += Diff;
+            }
+            LastBlockTime = BlockReading.getHeader().getTimeSeconds();
+
+            //if (BlockReading->pprev == NULL)
+            try {
+                StoredBlock BlockReadingPrev = blockStore.get(BlockReading.getHeader().getPrevBlockHash());
+                if (BlockReadingPrev == null)
+                {
+                    //assert(BlockReading); break;
+                    return;
+                }
+                BlockReading = BlockReadingPrev;
+            }
+            catch(BlockStoreException x)
+            {
                 return;
             }
-
-            // No ... so check the difficulty didn't actually change.
-            if (nextBlock.getDifficultyTarget() != prev.getDifficultyTarget())
-                throw new VerificationException("Unexpected change in difficulty at height " + storedPrev.getHeight() +
-                        ": " + Long.toHexString(nextBlock.getDifficultyTarget()) + " vs " +
-                        Long.toHexString(prev.getDifficultyTarget()));
-            return;
         }
 
-        // We need to find a block far back in the chain. It's OK that this is expensive because it only occurs every
-        // two weeks after the initial block chain download.
-        long now = System.currentTimeMillis();
-        StoredBlock cursor = blockStore.get(prev.getHash());
-        
-        int goBack = params.interval - 1;
-        if (cursor.getHeight()+1 != params.interval)
-            goBack = params.interval;
-                    
-        for (int i = 0; i < goBack; i++) {
-            if (cursor == null) {
-                // This should never happen. If it does, it means we are following an incorrect or busted chain.
-                throw new VerificationException(
-                        "Difficulty transition point but we did not find a way back to the genesis block.");
-            }
-            cursor = blockStore.get(cursor.getHeader().getPrevBlockHash());
+        BigInteger bnNew = PastDifficultyAverage;
+        if (nBlockTimeCount != 0 && nBlockTimeCount2 != 0) {
+            double SmartAverage = ((((double)nBlockTimeAverage)*0.7)+(((double)nBlockTimeSum2 / (double)nBlockTimeCount2)*0.3));
+            if(SmartAverage < 1) SmartAverage = 1;
+            double Shift = ((int)(2 * 60))/SmartAverage;
+
+            double fActualTimespan = (((double)CountBlocks*(double)((int)(2 * 60)))/Shift);
+            double fTargetTimespan = ((double)CountBlocks*((int)(2 * 60)));
+            if (fActualTimespan < fTargetTimespan/3)
+                fActualTimespan = fTargetTimespan/3;
+            if (fActualTimespan > fTargetTimespan*3)
+                fActualTimespan = fTargetTimespan*3;
+
+            long nActualTimespan = (long)fActualTimespan;
+            long nTargetTimespan = (long)fTargetTimespan;
+
+            // Retarget
+            bnNew = bnNew.multiply(BigInteger.valueOf(nActualTimespan));
+            bnNew = bnNew.divide(BigInteger.valueOf(nTargetTimespan));
         }
-        long elapsed = System.currentTimeMillis() - now;
-        if (elapsed > 50)
-            log.info("Difficulty transition traversal took {}msec", elapsed);
+        verifyDifficulty(bnNew, storedPrev, nextBlock);
 
-	// Check if our cursor is null.  If it is, we've used checkpoints to restore.
-	if(cursor == null) return;
-
-        Block blockIntervalAgo = cursor.getHeader();
-        int timespan = (int) (prev.getTimeSeconds() - blockIntervalAgo.getTimeSeconds());
-        // Limit the adjustment step.
-        if (timespan < params.targetTimespan / 4)
-            timespan = params.targetTimespan / 4;
-        if (timespan > params.targetTimespan * 4)
-            timespan = params.targetTimespan * 4;
-
-        BigInteger newDifficulty = Utils.decodeCompactBits(prev.getDifficultyTarget());
-        newDifficulty = newDifficulty.multiply(BigInteger.valueOf(timespan));
-        newDifficulty = newDifficulty.divide(BigInteger.valueOf(params.targetTimespan));
-
-        if (newDifficulty.compareTo(params.proofOfWorkLimit) > 0) {
-            log.info("Difficulty hit proof of work limit: {}", newDifficulty.toString(16));
-            newDifficulty = params.proofOfWorkLimit;
+        /*if (bnNew > bnProofOfWorkLimit){
+            bnNew = bnProofOfWorkLimit;
         }
 
+        return bnNew.GetCompact();*/
+    }
+
+    static double ConvertBitsToDouble(long nBits){
+        long nShift = (nBits >> 24) & 0xff;
+
+        double dDiff =
+                (double)0x0000ffff / (double)(nBits & 0x00ffffff);
+
+        while (nShift < 29)
+        {
+            dDiff *= 256.0;
+            nShift++;
+        }
+        while (nShift > 29)
+        {
+            dDiff /= 256.0;
+            nShift--;
+        }
+
+        return dDiff;
+    }
+    
+    private void verifyDifficulty(BigInteger calcDiff, StoredBlock storedPrev, Block nextBlock)
+    {
+        if (calcDiff.compareTo(params.getProofOfWorkLimit()) > 0) {
+            log.info("Difficulty hit proof of work limit: {}", calcDiff.toString(16));
+            calcDiff = params.getProofOfWorkLimit();
+        }
         int accuracyBytes = (int) (nextBlock.getDifficultyTarget() >>> 24) - 3;
         BigInteger receivedDifficulty = nextBlock.getDifficultyTargetAsInteger();
 
         // The calculated difficulty is to a higher precision than received, so reduce here.
         BigInteger mask = BigInteger.valueOf(0xFFFFFFL).shiftLeft(accuracyBytes * 8);
-        newDifficulty = newDifficulty.and(mask);
+        calcDiff = calcDiff.and(mask);
 
-        if (newDifficulty.compareTo(receivedDifficulty) != 0)
+        long nBitsNext = nextBlock.getDifficultyTarget();
+
+        long calcDiffBits = (accuracyBytes+3) << 24;
+        calcDiffBits |= calcDiff.shiftRight(accuracyBytes*8).longValue();
+
+        double n1 = ConvertBitsToDouble(calcDiffBits);
+        double n2 = ConvertBitsToDouble(nBitsNext);
+
+        if(java.lang.Math.abs(n1-n2) > n1*0.005)
             throw new VerificationException("Network provided difficulty bits do not match what was calculated: " +
-                    receivedDifficulty.toString(16) + " vs " + newDifficulty.toString(16));
+                receivedDifficulty.toString(16) + " vs " + calcDiff.toString(16));
     }
-
+    
     private void checkTestnetDifficulty(StoredBlock storedPrev, Block prev, Block next) throws VerificationException, BlockStoreException {
         checkState(lock.isLocked());
         // After 15th February 2012 the rules on the testnet change to avoid people running up the difficulty
